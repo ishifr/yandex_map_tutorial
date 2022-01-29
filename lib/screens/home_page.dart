@@ -10,6 +10,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late YandexMapController controller;
+  final List<MapObject> mapObjects = [];
+  final MapObjectId placemarkId = MapObjectId('normal_icon_placemark');
 
   @override
   void initState() {
@@ -28,6 +30,12 @@ class _HomePageState extends State<HomePage> {
         nightModeEnabled: false,
         indoorEnabled: false,
         liteModeEnabled: false,
+        mapObjects: mapObjects,
+        onMapTap: (Point point) {
+          marker(
+              latitude: point.latitude.toDouble(),
+              longitude: point.longitude.toDouble());
+        },
         onMapCreated: (YandexMapController yandexMapController) async {
           controller = yandexMapController;
           final cameraPosition = await controller.getCameraPosition().then(
@@ -41,5 +49,49 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
+  }
+
+  marker({latitude, longitude}) {
+    if (mapObjects.isEmpty) {
+      if (mapObjects.any((element) => element.mapId == placemarkId)) {
+        return;
+      }
+
+      final placemark = Placemark(
+        mapId: placemarkId,
+        point: Point(latitude: latitude, longitude: longitude),
+        onTap: (Placemark self, Point point) {
+          print('Tapped me at $point');
+        },
+        direction: 0,
+        opacity: 1,
+        isDraggable: true,
+        onDragStart: (_) => print('Drag start'),
+        onDrag: (_, Point point) => print('Drag at point $point'),
+        onDragEnd: (_) => print('Drag end'),
+        icon: PlacemarkIcon.single(PlacemarkIconStyle(
+            scale: 2.4,
+            image:
+                BitmapDescriptor.fromAssetImage('assets/img/location_icon.png'),
+            rotationType: RotationType.noRotation)),
+      );
+
+      setState(() {
+        mapObjects.add(placemark);
+      });
+    } else if (mapObjects.isNotEmpty) {
+      if (!mapObjects.any((element) => element.mapId == placemarkId)) {
+        return;
+      }
+
+      final placemarkUpdate =
+          mapObjects.firstWhere((el) => el.mapId == placemarkId) as Placemark;
+      setState(() {
+        mapObjects[mapObjects.indexOf(placemarkUpdate)] =
+            placemarkUpdate.copyWith(
+          point: Point(latitude: latitude, longitude: longitude),
+        );
+      });
+    }
   }
 }

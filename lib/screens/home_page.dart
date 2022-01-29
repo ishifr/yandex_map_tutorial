@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:location/location.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,10 +13,13 @@ class _HomePageState extends State<HomePage> {
   late YandexMapController controller;
   final List<MapObject> mapObjects = [];
   final MapObjectId placemarkId = MapObjectId('normal_icon_placemark');
+  Location location = Location();
+  LocationData? currentPosition;
 
   @override
   void initState() {
     super.initState();
+    getLocation();
   }
 
   @override
@@ -46,6 +50,25 @@ class _HomePageState extends State<HomePage> {
                       zoom: 12.0)));
             },
           );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.location_on),
+        backgroundColor: Colors.amber,
+        
+        onPressed: () async {
+          await controller.moveCamera(CameraUpdate.newCameraPosition(
+              CameraPosition(
+                  target: Point(
+                      latitude: currentPosition!.latitude!.toDouble(),
+                      longitude: currentPosition!.longitude!.toDouble()),
+                  zoom: 16.0)));
+
+          marker(
+              latitude: currentPosition!.latitude!.toDouble(),
+              longitude: currentPosition!.longitude!.toDouble());
+          print("latitude: ${currentPosition!.latitude!.toDouble()} ");
+          print("longitude: ${currentPosition!.longitude!.toDouble()} ");
         },
       ),
     );
@@ -93,5 +116,33 @@ class _HomePageState extends State<HomePage> {
         );
       });
     }
+  }
+
+  Future getLocation() async {
+    bool _serviceEnabled;
+    PermissionStatus _permissionGranted;
+
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return;
+      }
+    }
+
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return;
+      }
+    }
+
+    currentPosition = await location.getLocation();
+    location.onLocationChanged.listen((LocationData currentLocation) {
+      setState(() {
+        currentPosition = currentLocation;
+      });
+    });
   }
 }

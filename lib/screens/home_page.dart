@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
+import 'package:material_floating_search_bar/material_floating_search_bar.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
+// import 'package:js/js.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -25,37 +27,47 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: YandexMap(
-        tiltGesturesEnabled: true,
-        zoomGesturesEnabled: true,
-        rotateGesturesEnabled: true,
-        scrollGesturesEnabled: true,
-        modelsEnabled: true,
-        nightModeEnabled: false,
-        indoorEnabled: false,
-        liteModeEnabled: false,
-        mapObjects: mapObjects,
-        onMapTap: (Point point) {
-          marker(
-              latitude: point.latitude.toDouble(),
-              longitude: point.longitude.toDouble());
-        },
-        onMapCreated: (YandexMapController yandexMapController) async {
-          controller = yandexMapController;
-          final cameraPosition = await controller.getCameraPosition().then(
-            (value) async {
-              await controller.moveCamera(CameraUpdate.newCameraPosition(
-                  const CameraPosition(
-                      target: Point(latitude: 41.2995, longitude: 69.2401),
-                      zoom: 12.0)));
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          YandexMap(
+            tiltGesturesEnabled: true,
+            zoomGesturesEnabled: true,
+            rotateGesturesEnabled: true,
+            scrollGesturesEnabled: true,
+            modelsEnabled: true,
+            nightModeEnabled: false,
+            indoorEnabled: false,
+            liteModeEnabled: false,
+            mapObjects: mapObjects,
+            onMapTap: (Point point) {
+              marker(
+                  latitude: point.latitude.toDouble(),
+                  longitude: point.longitude.toDouble());
             },
-          );
-        },
+            onMapCreated: (YandexMapController yandexMapController) async {
+              controller = yandexMapController;
+              final cameraPosition = await controller.getCameraPosition().then(
+                (value) async {
+                  await controller.moveCamera(CameraUpdate.newCameraPosition(
+                      const CameraPosition(
+                          target: Point(latitude: 41.2995, longitude: 69.2401),
+                          zoom: 12.0)));
+                },
+              );
+            },
+          ),
+          Positioned(
+              // top: getH(30.0),
+              child: SizedBox(
+            child: searchBarUI(),
+          )),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.location_on),
         backgroundColor: Colors.amber,
-        
         onPressed: () async {
           await controller.moveCamera(CameraUpdate.newCameraPosition(
               CameraPosition(
@@ -145,4 +157,92 @@ class _HomePageState extends State<HomePage> {
       });
     });
   }
+
+  Widget searchBarUI() {
+    return FloatingSearchBar(
+      hint: 'Search.....',
+      openAxisAlignment: 0.0,
+      width: 600,
+      axisAlignment: 0.0,
+      scrollPadding: EdgeInsets.only(top: 16, bottom: 20),
+      elevation: 4.0,
+      physics: BouncingScrollPhysics(),
+      onQueryChanged: (query) {
+        //Your methods will be here
+        print(query);
+        var info = findPlaces(query: query);
+      },
+      transitionCurve: Curves.easeInOut,
+      transitionDuration: Duration(milliseconds: 400),
+      transition: CircularFloatingSearchBarTransition(),
+      debounceDelay: Duration(milliseconds: 300),
+      actions: [
+        FloatingSearchBarAction(
+          showIfOpened: false,
+          child: CircularButton(
+            icon: Icon(Icons.place),
+            onPressed: () {
+              print('Places Pressed');
+            },
+          ),
+        ),
+        FloatingSearchBarAction.searchToClear(
+          showIfClosed: false,
+        ),
+      ],
+      builder: (context, transition) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: Material(
+            color: Colors.white,
+            child: Container(
+              height: 200.0,
+              color: Colors.white,
+              child: Column(
+                children: [
+                  ListTile(
+                    title: Text('Home'),
+                    subtitle: Text('more info here........'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  findPlaces({String? query}) async {
+    final results = YandexSearch.searchByText(
+        searchText: query!,
+        geometry: const Geometry.fromBoundingBox(BoundingBox(
+          southWest:
+              Point(latitude: 55.76996383933034, longitude: 37.57483142322235),
+          northEast: Point(
+              latitude: 55.785322774728414, longitude: 37.590924677311705),
+        )),
+        searchOptions: const SearchOptions(
+          searchType: SearchType.geo,
+          geometry: false,
+          userPosition: Point(latitude: 41.311158, longitude: 69.279737),
+        ));
+
+    SearchSessionResult res = await results.result;
+
+    return info(data: res.items);
+  }
+
+  info({data}) {
+    List list = [];
+    for (var r in data) {
+      r.items.asMap().forEach((i, item) {
+        list.add(i);
+        print("$i");
+      });
+    }
+
+    return list;
+  }
 }
+// 41.311158, 69.279737
